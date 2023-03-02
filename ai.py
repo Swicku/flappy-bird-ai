@@ -19,9 +19,8 @@ class Network(nn.Module):
         super(Network, self).__init__()
         self.input_size = input_size
         self.nb_action = nb_action
-        self.fc1 = nn.Linear(input_size, 50)
-        self.fc2 = nn.Linear(50, 50)
-        self.fc3 = nn.Linear(50, nb_action)
+        self.fc1 = nn.Linear(input_size, 30)
+        self.fc2 = nn.Linear(30, nb_action)
 
     def forward(self, state):
         x = F.relu(self.fc1(state))
@@ -56,7 +55,7 @@ class Dqn():
         self.last_reward = 0
 
     def select_action(self, state):
-        probs = F.softmax(self.model(Variable(state, volatile=True)) * 100)  # T=7
+        probs = F.softmax(self.model(Variable(state, volatile=True)) * 7)  # T=7
         action = probs.multinomial(num_samples=1)
         return action.data[0, 0]
 
@@ -66,14 +65,14 @@ class Dqn():
         target = self.gamma * next_outputs + batch_reward
         td_loss = F.smooth_l1_loss(outputs, target)
         self.optimizer.zero_grad()
-        td_loss.backward(retain_graph=True)
+        td_loss.backward()
         self.optimizer.step()
 
     def update(self, reward, new_signal):
         new_state = torch.Tensor(new_signal).float().unsqueeze(0)
-        # print(new_state)
         self.memory.push(
             (self.last_state, new_state, torch.LongTensor([int(self.last_action)]), torch.Tensor([self.last_reward])))
+
         action = self.select_action(new_state)
         if len(self.memory.memory) > 100:
             batch_state, batch_next_state, batch_action, batch_reward = self.memory.sample(100)

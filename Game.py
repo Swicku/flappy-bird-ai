@@ -8,11 +8,10 @@ from physics.TopWall import TopWall
 from ai import Dqn
 
 # AI stuff
-brain = Dqn(7, 1, 0.9)
+brain = Dqn(7, 2, 3)
 last_reward = 0
-scores = []
-has_passed_walls = False
-#
+# don't jump / jump
+action2action = [0, 1]
 
 
 class Game(Widget):
@@ -29,6 +28,8 @@ class Game(Widget):
     wall_width = None
     top_wall = None
     bottom_wall = None
+
+    pipe_middle = None
 
     def __init__(self, gravity_force):
         super().__init__()
@@ -53,12 +54,13 @@ class Game(Widget):
                 Rectangle(pos=self.initial_top_wall_pos, size=self.initial_top_wall_size,
                           source='./images/wall.png'), self.initial_top_wall_pos, self.initial_top_wall_size)
 
+            self.pipe_middle = Rectangle(pos=(0, Window.height / 2), size=(Window.width, 120),
+                                         source='./images/wall.png')
+
     def update(self, dt):
 
         global brain
-        global scores
         global last_reward
-        global has_passed_walls
         # 0 - current bird height
         # 1 - wall width
         # 2 - x coordinate of bottom-left corner of bottom wall
@@ -76,35 +78,31 @@ class Game(Widget):
             self.top_wall.widget.size[1],
             self.bottom_wall.horizontal_velocity
         ]
+        # action = brain.update(last_reward, last_signal)
+        # jump = action2action[action]
 
-        has_passed_walls = False
-        last_reward = 0
+        # if jump == 1:
+        #     self.bird.jump()
 
-        action = brain.update(last_reward, last_signal)
-        print(action)
-        scores.append(brain.score())
-
-        if action == -1:
-            self.bird.jump()
+        pipe_center = (self.bottom_wall.widget.size[1] + self.top_wall.widget.pos[0]) / 2
+        # print(pipe_center)
+        # print(self.bird.widget.pos[1])
+        if self.bird.widget.pos[1] > pipe_center + 50 or self.bird.widget.pos[1] < pipe_center - 50:
+            print('Out')
+        # else:
+        #     last_reward = 10
 
         if self.bird.widget.pos[1] < 0:
-            last_reward = -1
-            has_passed_walls = False
+            last_reward = -4
             self.reset_game()
         if self.bird.is_colliding_with(self.top_wall.widget.pos, self.top_wall.widget.size) \
                 or self.bird.is_colliding_with(self.bottom_wall.widget.pos, self.bottom_wall.widget.size):
-            last_reward = -1
-            has_passed_walls = False
+            last_reward = -4
             self.reset_game()
         if self.bottom_wall.widget.pos[0] + self.wall_width < 0:
-            has_passed_walls = False
             self.respawn_walls()
-        if self.bird.widget.pos[0] > self.bottom_wall.widget.pos[0]:
-            if not has_passed_walls:
-                last_reward = 0.5
-                has_passed_walls = True
 
-        # print(last_reward)
+        print(last_reward)
 
         self.manage_bird(dt)
         self.manage_walls(dt)
