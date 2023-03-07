@@ -1,4 +1,6 @@
 import random
+import time
+
 from physics.Bird import Bird
 from kivy.uix.widget import Widget
 from kivy.graphics import Rectangle
@@ -12,6 +14,10 @@ brain = Dqn(7, 2, 3)
 last_reward = 0
 # don't jump / jump
 action2action = [0, 1]
+
+
+def get_current_epoch_time():
+    return int(time.time())
 
 
 class Game(Widget):
@@ -28,8 +34,9 @@ class Game(Widget):
     wall_width = None
     top_wall = None
     bottom_wall = None
-
+    gap_size = Window.height / 2.2
     pipe_middle = None
+    start_time = None
 
     def __init__(self, gravity_force):
         super().__init__()
@@ -53,9 +60,10 @@ class Game(Widget):
             self.top_wall = TopWall(
                 Rectangle(pos=self.initial_top_wall_pos, size=self.initial_top_wall_size,
                           source='./images/wall.png'), self.initial_top_wall_pos, self.initial_top_wall_size)
+            self.start_time = get_current_epoch_time()
 
-            self.pipe_middle = Rectangle(pos=(0, Window.height / 2), size=(Window.width, 120),
-                                         source='./images/wall.png')
+            # self.pipe_middle = Rectangle(pos=(0, Window.height / 2), size=(Window.width, 150),
+            #                              source='./images/wall.png')
 
     def update(self, dt):
 
@@ -78,26 +86,28 @@ class Game(Widget):
             self.top_wall.widget.size[1],
             self.bottom_wall.horizontal_velocity
         ]
-        # action = brain.update(last_reward, last_signal)
-        # jump = action2action[action]
+        action = brain.update(last_reward, last_signal)
+        jump = action2action[action]
 
-        # if jump == 1:
-        #     self.bird.jump()
+        # print(jump)
 
-        pipe_center = (self.bottom_wall.widget.size[1] + self.top_wall.widget.pos[0]) / 2
-        # print(pipe_center)
-        # print(self.bird.widget.pos[1])
-        if self.bird.widget.pos[1] > pipe_center + 50 or self.bird.widget.pos[1] < pipe_center - 50:
-            print('Out')
-        # else:
-        #     last_reward = 10
+        if jump == 1:
+            self.bird.jump()
+
+        pipe_center = self.bottom_wall.widget.size[1] + self.gap_size / 2
+
+        if self.bird.widget.pos[1] > pipe_center + 70 or self.bird.widget.pos[1] < pipe_center - 70:
+            if last_reward == 2:
+                last_reward = -1
+        else:
+            last_reward = 2
 
         if self.bird.widget.pos[1] < 0:
-            last_reward = -4
+            last_reward = -5
             self.reset_game()
         if self.bird.is_colliding_with(self.top_wall.widget.pos, self.top_wall.widget.size) \
                 or self.bird.is_colliding_with(self.bottom_wall.widget.pos, self.bottom_wall.widget.size):
-            last_reward = -4
+            last_reward = -2
             self.reset_game()
         if self.bottom_wall.widget.pos[0] + self.wall_width < 0:
             self.respawn_walls()
@@ -124,14 +134,14 @@ class Game(Widget):
     def reset_game(self):
         self.bird.reset()
         self.reset_walls()
+        self.start_time = get_current_epoch_time()
 
     def respawn_walls(self):
         wall_speed = -random.randint(200, 300)
         self.bottom_wall.horizontal_velocity = wall_speed
         self.top_wall.horizontal_velocity = wall_speed
 
-        gap_size = Window.height / 2.2
-        space_for_walls = Window.height - gap_size
+        space_for_walls = Window.height - self.gap_size
 
         top_wall_height_occupation = (random.randint(1, 9) / 10) * space_for_walls
         bottom_wall_height_occupation = space_for_walls - top_wall_height_occupation
